@@ -1,0 +1,8 @@
+LICENSE
+README.md
+setup.py
+src/jetron.egg-info/PKG-INFO
+src/jetron.egg-info/SOURCES.txt
+src/jetron.egg-info/dependency_links.txt
+src/jetron.egg-info/not-zip-safe
+src/jetron.egg-info/top_level.txt
