@@ -1,0 +1,56 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.13.5
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.9.10
+    start_time: 1694165878.514222
+    t:
+      1:
+      - 1
+      - 55
+      - 76
+      2:
+      - 1
+      - 55
+      - 76
+      3:
+      - 2
+      - 4
+      - 16
+      - 23
+      4: 3.9.10
+      5: 0.13.5
+      8:
+      - 5
+batch_size:
+  desc: null
+  value: 32
+best_model_name:
+  desc: null
+  value: best_model
+data_path:
+  desc: null
+  value: /scratch/gc2c20/data/
+epochs:
+  desc: null
+  value: 20
+logdir:
+  desc: null
+  value: logs/
+lr:
+  desc: null
+  value: 0.001
+test_samples:
+  desc: null
+  value: 1000
+train_samples:
+  desc: null
+  value: 1000
+valid_samples:
+  desc: null
+  value: 1000
