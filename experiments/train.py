@@ -8,7 +8,7 @@ from pathlib import Path
 from tqdm import tqdm
 import click
 
-from jetron.ensemble import Ensemble
+from jetron.ensemble import Composite
 from jetron.regnet import RegNet
 from lundnet.LundNet import LundNet
 #from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
@@ -160,7 +160,7 @@ def train(args, dataset, valid_dataset):
         model1.load_state_dict(state_dict)
 
         ### initialise the ensemble model
-        model = Ensemble(model0, model1).to(device)
+        model = Composite(model0, model1).to(device)
         print(f"Model with {count_params(model)} trainable parameters")
 
         ### optimizer and scheduler

@@ -1,8 +1,8 @@
 import torch.nn as nn
 
-class Ensemble(nn.Module):
+class Composite(nn.Module):
     def __init__(self, network_a, network_b, return_lund=False):
-        super(Ensemble, self).__init__()
+        super(Composite, self).__init__()
         self.network_a = network_a
         self.network_b = network_b
         self.return_lund = return_lund
