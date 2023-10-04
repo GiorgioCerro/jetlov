@@ -47,7 +47,7 @@ def train(device, model, dataloader, val_dataloader, num_epochs=100):
             print(20*"!")
             print(f"Saving best model with loss: {best_val_loss:.5f}")
             print(20*"!")
-            torch.save(model.state_dict(), "logs/best_regression_xs.pt")
+            torch.save(model.state_dict(), "logs/best_regression_quarkgluon.pt")
 
         scheduler.step()
 
@@ -91,13 +91,13 @@ def validate(device, model, dataloader, plot=False):
 
 def main():
     path = "/scratch/gc2c20/data/train/"
-    dataset = Dataset(Path(path + "QCD_500GeV.json.gz"),
-            Path(path + "WW_500GeV.json.gz"), nev=-1, n_samples=50_000)
+    dataset = Dataset(Path(path + "Quark_500GeV.json.gz"),
+            Path(path + "Gluon_500GeV.json.gz"), nev=-1, n_samples=50_000)
     dataloader = GraphDataLoader(dataset, batch_size=4, shuffle=True)
 
     path = "/scratch/gc2c20/data/valid/"
-    val_dataset = Dataset(Path(path + "valid_QCD_500GeV.json.gz"),
-            Path(path + "valid_WW_500GeV.json.gz"), nev=-1, n_samples=5_000)
+    val_dataset = Dataset(Path(path + "valid_Quark_500GeV.json.gz"),
+            Path(path + "valid_Gluon_500GeV.json.gz"), nev=-1, n_samples=5_000)
     val_dataloader = GraphDataLoader(val_dataset, batch_size=8)
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")

@@ -8,7 +8,7 @@ from pathlib import Path
 from tqdm import tqdm
 import click
 
-from jetron.ensemble import Composite
+from jetron.composite import Composite
 from jetron.regnet import RegNet
 from lundnet.LundNet import LundNet
 #from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
@@ -135,7 +135,7 @@ def eval(args, device, model, dataloader):
 
 
 def train(args, dataset, valid_dataset):
-    with wandb.init(project="jetron-tagging", entity="office4005", 
+    with wandb.init(project="jetlov", entity="office4005", 
             config=dict(args), group=args.best_model_name + "-" + args.task):
         device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -216,12 +216,16 @@ def train(args, dataset, valid_dataset):
         print(30*"=")
         print(f"Training complete")
         del dataset, dataloader, valid_dataset, val_loader
+        background = "QCD_500GeV.json.gz"
         if args.task == "w-tag":
             signal = "WW_500GeV.json.gz"
-        else:
+        elif args.task == "top-tag":
             signal = "Top_500GeV.json.gz"
+        else:
+            signal = "Quark_500GeV.json.gz"
+            background = "Gluon_500GeV.json.gz"
         PATH = args.data_path
-        test_dataset = Dataset(Path(PATH+"/test/test_QCD_500GeV.json.gz"), 
+        test_dataset = Dataset(Path(PATH+"/test/test_"+background), 
                             Path(PATH+"/test/test_"+signal), 
                             nev=-1, n_samples=args.test_samples)
         
@@ -255,7 +259,7 @@ def train(args, dataset, valid_dataset):
         print(f"Inv_bkg_at_sig_05: {bkg_rej_05:.5f}")
         print(f"Inv_bkg_at_sig_07: {bkg_rej_07:.5f}")
 
-        with open("outputs/" + args.best_model_name + ".pickle", "wb") as f:
+        with open("outputs/" + args.best_model_name + "-" + args.task + ".pickle", "wb") as f:
             pickle.dump({
                 "signal_eff": eff_s,
                 "background_eff": eff_b,
@@ -283,15 +287,19 @@ def main(**kwargs):
     for key, val in args.items():
         print(f"{key}: {val}")
 
+    background = "QCD_500GeV.json.gz"
     if args.task == "w-tag":
         signal = "WW_500GeV.json.gz"
-    else:
+    elif args.task == "top-tag":
         signal = "Top_500GeV.json.gz"
+    else:
+        signal = "Quark_500GeV.json.gz"
+        background = "Gluon_500GeV.json.gz"
     PATH = args.data_path
-    train_dataset = Dataset(Path(PATH+"/train/QCD_500GeV.json.gz"), 
+    train_dataset = Dataset(Path(PATH+"/train/"+background), 
                             Path(PATH+"/train/"+signal), 
                             nev=-1, n_samples=args.train_samples)
-    valid_dataset = Dataset(Path(PATH+"/valid/valid_QCD_500GeV.json.gz"), 
+    valid_dataset = Dataset(Path(PATH+"/valid/valid_"+background), 
                             Path(PATH+"/valid/valid_"+signal), 
                             nev=-1, n_samples=args.valid_samples)
     
