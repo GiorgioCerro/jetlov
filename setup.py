@@ -12,12 +12,12 @@ with open('README.md') as f:
     long_desc = f.read()
 
 
-setup(name= "jetron",
+setup(name= "jetlov",
       version = '0.0.1',
-      description = "Jet Tree Regression with Optimal LundNet",
-      author = "M. J. Ardiles-Diaz, G. Cerro",
-      author_email = "m.j.ardiles-diaz@soton.ac.uk, g.cerro@soton.ac.uk",
-      url="https://github.com/GiorgioCerro/jetron",
+      description = "Enhancing Jet Tree Tagging through Neural Network Learning of Optimal LundNet Variables",
+      author = "G. Cerro",
+      author_email = "g.cerro@soton.ac.uk",
+      url="https://github.com/GiorgioCerro/jetlov",
       long_description = long_desc,
       #entry_points = {'console_scripts':
       #                ['lundnet = lundnet.scripts.lundnet:main']},
