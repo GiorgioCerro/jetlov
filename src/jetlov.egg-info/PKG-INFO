@@ -1,10 +1,10 @@
 Metadata-Version: 2.1
-Name: jetron
+Name: jetlov
 Version: 0.0.1
-Summary: Jet Tree Regression with Optimal LundNet
-Home-page: https://github.com/GiorgioCerro/jetron
-Author: M. J. Ardiles-Diaz, G. Cerro
-Author-email: m.j.ardiles-diaz@soton.ac.uk, g.cerro@soton.ac.uk
+Summary: Enhancing Jet Tree Tagging through Neural Network Learning of Optimal LundNet Variables
+Home-page: https://github.com/GiorgioCerro/jetlov
+Author: G. Cerro
+Author-email: g.cerro@soton.ac.uk
 License: UNKNOWN
 Platform: UNKNOWN
 Classifier: Operating System :: Unix
