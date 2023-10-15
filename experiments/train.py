@@ -8,14 +8,14 @@ from pathlib import Path
 from tqdm import tqdm
 import click
 
-from jetron.composite import Composite
-from jetron.regnet import RegNet
+from jetlov.composite import Composite
+from jetlov.regnet import RegNet
 from lundnet.LundNet import LundNet
 #from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
 from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
 
 from dgl.dataloading import GraphDataLoader
-from jetron.util import collate_fn, count_params, wandb_cluster_mode
+from jetlov.util import collate_fn, count_params, wandb_cluster_mode
 
 from torchmetrics import MetricCollection, ROC, AUROC, classification as metrics
 
