@@ -135,18 +135,18 @@ def eval(args, device, model, dataloader):
 
 
 def train(args, dataset, valid_dataset):
-    with wandb.init(project="reshower", entity="office4005", 
+    with wandb.init(project="tree-topology", entity="office4005", 
             config=dict(args), group=args.best_model_name[:-2] + "-" + args.task):
         device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
         ### loading the regression network
-        model0 = RegNet()
-        if args.task == "w-tag":
-            state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
-        else:
-            state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
-        model0.load_state_dict(state_dict)
+        #model0 = RegNet()
+        #if args.task == "w-tag":
+        #    state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
+        #else:
+        #    state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
+        #model0.load_state_dict(state_dict)
        
 
         ### loading the tagger
@@ -154,13 +154,13 @@ def train(args, dataset, valid_dataset):
         fc_params = [(256, 0.1)]
         use_fusion = True
         input_dims = 5
-        model1 = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params,
+        model = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params,
                 fc_params=fc_params, use_fusion=use_fusion).to(device)
-        state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
-        model1.load_state_dict(state_dict)
+        #state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
+        #model1.load_state_dict(state_dict)
 
         ### initialise the ensemble model
-        model = Composite(model0, model1).to(device)
+        #model = Composite(model0, model1).to(device)
         print(f"Model with {count_params(model)} trainable parameters")
 
         ### optimizer and scheduler
@@ -210,19 +210,19 @@ def train(args, dataset, valid_dataset):
                 best_valid_acc = valid_acc
                 p = Path(args.logdir)
                 p.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), 
-                    p.joinpath(f"{args.best_model_name}-{args.task}.pt"))
+                torch.save(model.state_dict(), p.joinpath(f"{args.best_model_name}.pt"))
 
         
         print(30*"=")
         print(f"Training complete")
         return model
-
+       
 
 def test(args, test_dataset, model):
-    with wandb.init(project="reshower", entity="office4005", config=dict(args),
-            group=args.best_model_name[:-2] + "-" + args.task):
-        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    with wandb.init(project="tree-topology", entity="office4005", 
+            config=dict(args), group=args.best_model_name[:-2] + "-" + args.task):
+        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
         test_loader = GraphDataLoader(
             dataset=test_dataset,
             batch_size=args.batch_size,
@@ -233,7 +233,7 @@ def test(args, test_dataset, model):
             collate_fn=collate_fn,
         )
 
-        state_dict = torch.load(f"logs/{args.best_model_name}-{args.task}.pt", 
+        state_dict = torch.load("logs/" + args.best_model_name + ".pt", 
                                 map_location="cpu")
         model.load_state_dict(state_dict)
         model.to(device)
@@ -252,13 +252,14 @@ def test(args, test_dataset, model):
         print(f"Inv_bkg_at_sig_03: {bkg_rej_03:.5f}")
         print(f"Inv_bkg_at_sig_05: {bkg_rej_05:.5f}")
         print(f"Inv_bkg_at_sig_07: {bkg_rej_07:.5f}")
-
+    
         wandb.log({
             "test/accuracy": scores_test['accuracy'].item(),
             "test/auc": scores_test['auroc'].item(),
             "test/bkg_rej_03": bkg_rej_03,
             "test/bkg_rej_05": bkg_rej_05,
             "test/bkg_rej_07": bkg_rej_07,
+            
         })
 
         with open("outputs/" + args.best_model_name + "-" + args.task + ".pickle", "wb") as f:
@@ -283,7 +284,6 @@ def test(args, test_dataset, model):
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
-@click.option("--runs", type=click.INT, default=1)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
     print(f"Working with the following configs:")
@@ -310,18 +310,35 @@ def main(**kwargs):
 
     wandb_cluster_mode()
     args.best_model_name += '-0'
-    for _best in range(args.runs):
+    for _best in range(5):
         args.best_model_name = args.best_model_name[:-2]
         args.best_model_name += f'-{_best}'
         model = train(args, train_dataset, valid_dataset)
 
-    
+    ### Preparing the testing 
     del train_dataset, valid_dataset
-    test_dataset = Dataset(Path(PATH+"/test/test_"+background),
-                        Path(PATH+"/test/test_"+signal),
+    wandb_cluster_mode()
+    background = "QCD_500GeV.json.gz"
+    if args.task == "w-tag":
+        signal = "WW_500GeV.json.gz"
+    elif args.task == "top-tag":
+        signal = "Top_500GeV.json.gz"
+    else:
+        signal = "Quark_500GeV.json.gz"
+        background = "Gluon_500GeV.json.gz"
+    PATH = args.data_path
+    test_dataset = Dataset(Path(PATH+"/test/test_"+background), 
+                        Path(PATH+"/test/test_"+signal), 
                         nev=-1, n_samples=args.test_samples)
 
-    for _best in range(args.runs):
+    conv_params = [[32, 32], [32, 32], [64, 64], [64, 64], [128, 128], [128, 128]]
+    fc_params = [(256, 0.1)]
+    use_fusion = True
+    input_dims = 5
+    model = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, 
+                fc_params=fc_params, use_fusion=use_fusion)
+    #args.best_model_name += '-0'
+    for _best in range(5):
         args.best_model_name = args.best_model_name[:-2]
         args.best_model_name += f'-{_best}'
         test(args, test_dataset, model)
