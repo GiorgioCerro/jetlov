@@ -10,7 +10,7 @@ jetlov is tested and supported on 64-bit systems running Linux.
 Install jetron with Python's pip package manager:
 
 ```
-git clone git@github.com:GiorgioCerro/jetron.git
+git clone git@github.com:GiorgioCerro/jetlov.git
 cd jetlov
 pip install -e .
 ```
