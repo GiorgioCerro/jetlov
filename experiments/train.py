@@ -135,18 +135,19 @@ def eval(args, device, model, dataloader):
 
 
 def train(args, dataset, valid_dataset):
-    with wandb.init(project="reshower", entity="office4005", 
+    with wandb.init(project="tree-topology", entity="office4005", 
             config=dict(args), group=args.best_model_name[:-2] + "-" + args.task):
         device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
         ### loading the regression network
         model0 = RegNet()
-        if args.task == "w-tag":
-            state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
-        else:
-            state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
-        model0.load_state_dict(state_dict)
+        if args.regnet_pretrained:
+            if args.task == "w-tag":
+                state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
+            else:
+                state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
+            model0.load_state_dict(state_dict)
        
 
         ### loading the tagger
@@ -156,8 +157,9 @@ def train(args, dataset, valid_dataset):
         input_dims = 5
         model1 = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params,
                 fc_params=fc_params, use_fusion=use_fusion).to(device)
-        state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
-        model1.load_state_dict(state_dict)
+        if args.lundnet_pretrained:
+            state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
+            model1.load_state_dict(state_dict)
 
         ### initialise the ensemble model
         model = Composite(model0, model1).to(device)
@@ -220,7 +222,7 @@ def train(args, dataset, valid_dataset):
 
 
 def test(args, test_dataset, model):
-    with wandb.init(project="reshower", entity="office4005", config=dict(args),
+    with wandb.init(project="tree-topology", entity="office4005", config=dict(args),
             group=args.best_model_name[:-2] + "-" + args.task):
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         test_loader = GraphDataLoader(
@@ -284,6 +286,9 @@ def test(args, test_dataset, model):
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
 @click.option("--runs", type=click.INT, default=1)
+@click.option("--algorithm", type=click.STRING, default="cambridge")
+@click.option("--regnet_pretrained", type=click.BOOL, default=True)
+@click.option("--lundnet_pretrained", type=click.BOOL, default=True)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
     print(f"Working with the following configs:")
@@ -301,10 +306,12 @@ def main(**kwargs):
     PATH = args.data_path
     train_dataset = Dataset(Path(PATH+"/train/"+background), 
                             Path(PATH+"/train/"+signal), 
-                            nev=-1, n_samples=args.train_samples)
+                            nev=-1, n_samples=args.train_samples,
+                            algorithm=args.algorithm)
     valid_dataset = Dataset(Path(PATH+"/valid/valid_"+background), 
                             Path(PATH+"/valid/valid_"+signal), 
-                            nev=-1, n_samples=args.valid_samples)
+                            nev=-1, n_samples=args.valid_samples,
+                            algorithm=args.algorithm)
     
     args.logdir = "logs/"
 
@@ -319,7 +326,8 @@ def main(**kwargs):
     del train_dataset, valid_dataset
     test_dataset = Dataset(Path(PATH+"/test/test_"+background),
                         Path(PATH+"/test/test_"+signal),
-                        nev=-1, n_samples=args.test_samples)
+                        nev=-1, n_samples=args.test_samples,
+                        algorithm=args.algorithm)
 
     for _best in range(args.runs):
         args.best_model_name = args.best_model_name[:-2]

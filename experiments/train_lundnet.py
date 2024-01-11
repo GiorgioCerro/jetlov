@@ -284,6 +284,8 @@ def test(args, test_dataset, model):
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
+@click.option("--runs", type=click.INT, default=1)
+@click.option("--algorithm", type=click.STRING, default="cambridge")
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
     print(f"Working with the following configs:")
@@ -301,44 +303,30 @@ def main(**kwargs):
     PATH = args.data_path
     train_dataset = Dataset(Path(PATH+"/train/"+background), 
                             Path(PATH+"/train/"+signal), 
-                            nev=-1, n_samples=args.train_samples)
+                            nev=-1, n_samples=args.train_samples,
+                            algorithm=args.algorithm)
     valid_dataset = Dataset(Path(PATH+"/valid/valid_"+background), 
                             Path(PATH+"/valid/valid_"+signal), 
-                            nev=-1, n_samples=args.valid_samples)
+                            nev=-1, n_samples=args.valid_samples,
+                            algorithm=args.algorithm)
     
     args.logdir = "logs/"
 
     wandb_cluster_mode()
     args.best_model_name += '-0'
-    for _best in range(5):
+    for _best in range(args.runs):
         args.best_model_name = args.best_model_name[:-2]
         args.best_model_name += f'-{_best}'
         model = train(args, train_dataset, valid_dataset)
 
     ### Preparing the testing 
     del train_dataset, valid_dataset
-    wandb_cluster_mode()
-    background = "QCD_500GeV.json.gz"
-    if args.task == "w-tag":
-        signal = "WW_500GeV.json.gz"
-    elif args.task == "top-tag":
-        signal = "Top_500GeV.json.gz"
-    else:
-        signal = "Quark_500GeV.json.gz"
-        background = "Gluon_500GeV.json.gz"
-    PATH = args.data_path
     test_dataset = Dataset(Path(PATH+"/test/test_"+background), 
                         Path(PATH+"/test/test_"+signal), 
-                        nev=-1, n_samples=args.test_samples)
+                        nev=-1, n_samples=args.test_samples, 
+                        algorithm=args.algorithm)
 
-    conv_params = [[32, 32], [32, 32], [64, 64], [64, 64], [128, 128], [128, 128]]
-    fc_params = [(256, 0.1)]
-    use_fusion = True
-    input_dims = 5
-    model = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params, 
-                fc_params=fc_params, use_fusion=use_fusion)
-    #args.best_model_name += '-0'
-    for _best in range(5):
+    for _best in range(args.runs):
         args.best_model_name = args.best_model_name[:-2]
         args.best_model_name += f'-{_best}'
         test(args, test_dataset, model)

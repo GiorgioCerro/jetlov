@@ -8,14 +8,14 @@ from pathlib import Path
 from tqdm import tqdm
 import click
 
-from jetron.composite import Composite
-from jetron.regnet import RegNet
+from jetlov.composite import Composite
+from jetlov.regnet import RegNet
 from lundnet.LundNet import LundNet
 #from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
 from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
 
 from dgl.dataloading import GraphDataLoader
-from jetron.util import collate_fn, count_params, wandb_cluster_mode
+from jetlov.util import collate_fn, count_params, wandb_cluster_mode
 
 from torchmetrics import MetricCollection, ROC, AUROC, classification as metrics
 
@@ -135,18 +135,19 @@ def eval(args, device, model, dataloader):
 
 
 def train(args, dataset, valid_dataset):
-    with wandb.init(project="jetlov", entity="office4005", 
+    with wandb.init(project="tree-topology", entity="office4005", 
             config=dict(args), group=args.best_model_name + "-" + args.task):
-        device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        #device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        device = torch.device('mps')
 
 
         ### loading the regression network
-        model0 = RegNet()
-        if args.task == "w-tag":
-            state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
-        else:
-            state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
-        model0.load_state_dict(state_dict)
+        #model0 = RegNet()
+        #if args.task == "w-tag":
+        #    state_dict = torch.load("logs/best_regression.pt", map_location="cpu")
+        #else:
+        #    state_dict = torch.load("logs/best_regression_top.pt", map_location="cpu")
+        #model0.load_state_dict(state_dict)
        
 
         ### loading the tagger
@@ -154,13 +155,13 @@ def train(args, dataset, valid_dataset):
         fc_params = [(256, 0.1)]
         use_fusion = True
         input_dims = 5
-        model1 = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params,
+        model = LundNet(input_dims=input_dims, num_classes=2, conv_params=conv_params,
                 fc_params=fc_params, use_fusion=use_fusion).to(device)
-        state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
-        model1.load_state_dict(state_dict)
+        #state_dict = torch.load("logs/best_tagger.pt", map_location="cpu")
+        #model1.load_state_dict(state_dict)
 
         ### initialise the ensemble model
-        model = Composite(model0, model1).to(device)
+        #model = Composite(model0, model1).to(device)
         print(f"Model with {count_params(model)} trainable parameters")
 
         ### optimizer and scheduler
@@ -274,10 +275,10 @@ def train(args, dataset, valid_dataset):
 @click.option("--batch_size", type=click.INT, default=256)
 @click.option("--epochs", type=click.INT, default=30)
 @click.option("--data_path", type=click.Path(exists=True), 
-            default="/scratch/gc2c20/data/")
-@click.option("--train_samples", type=click.INT, default=1_000_000)
-@click.option("--valid_samples", type=click.INT, default=100_000)
-@click.option("--test_samples", type=click.INT, default=100_000)
+            default="/Users/watson/Desktop/projects/data/")
+@click.option("--train_samples", type=click.INT, default=10_000)
+@click.option("--valid_samples", type=click.INT, default=10_000)
+@click.option("--test_samples", type=click.INT, default=10_000)
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
