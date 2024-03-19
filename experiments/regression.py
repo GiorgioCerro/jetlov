@@ -4,8 +4,8 @@ import torch.nn as nn
 from torchmetrics.functional.regression import mean_absolute_percentage_error as MAPE
 import numpy as np
 
-from jetron.regnet import RegNet
-from jetron.util import count_params
+from jetlov.regnet import RegNet
+from jetlov.util import count_params
 
 from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
 from dgl.dataloading import GraphDataLoader
@@ -14,7 +14,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-def train(device, model, dataloader, val_dataloader, num_epochs=100):
+def train(device: torch.device, model: nn.Module, dataloader: GraphDataLoader, 
+        val_dataloader: GraphDataLoader, name: str, num_epochs: int=100):
     loss_func = nn.MSELoss()
     optim = torch.optim.Adam(model.parameters(), lr=0.001, amsgrad=True)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optim, gamma=0.1, 
@@ -47,7 +48,7 @@ def train(device, model, dataloader, val_dataloader, num_epochs=100):
             print(20*"!")
             print(f"Saving best model with loss: {best_val_loss:.5f}")
             print(20*"!")
-            torch.save(model.state_dict(), "logs/best_regression_quarkgluon.pt")
+            torch.save(model.state_dict(), f"logs/{name}.pt")
 
         scheduler.step()
 
@@ -55,7 +56,8 @@ def train(device, model, dataloader, val_dataloader, num_epochs=100):
     print(50*"=")
     
 
-def validate(device, model, dataloader, plot=False):
+def validate(device: torch.device, model: nn.Module, 
+        dataloader: GraphDataLoader, plot: bool=False):
     model.eval()
     pred, target = [], []
     for graph, label in dataloader:
@@ -90,14 +92,16 @@ def validate(device, model, dataloader, plot=False):
 
 
 def main():
+    name = "regression_xs_top"
+    
     path = "/scratch/gc2c20/data/train/"
-    dataset = Dataset(Path(path + "Quark_500GeV.json.gz"),
-            Path(path + "Gluon_500GeV.json.gz"), nev=-1, n_samples=50_000)
-    dataloader = GraphDataLoader(dataset, batch_size=4, shuffle=True)
+    dataset = Dataset(Path(path + "QCD_500GeV.json.gz"),
+            Path(path + "Top_500GeV.json.gz"), nev=-1, n_samples=10_000)
+    dataloader = GraphDataLoader(dataset, batch_size=8, shuffle=True)
 
     path = "/scratch/gc2c20/data/valid/"
-    val_dataset = Dataset(Path(path + "valid_Quark_500GeV.json.gz"),
-            Path(path + "valid_Gluon_500GeV.json.gz"), nev=-1, n_samples=5_000)
+    val_dataset = Dataset(Path(path + "valid_QCD_500GeV.json.gz"),
+            Path(path + "valid_Top_500GeV.json.gz"), nev=-1, n_samples=2_000)
     val_dataloader = GraphDataLoader(val_dataset, batch_size=8)
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -107,11 +111,14 @@ def main():
     print(model)
     print(f"number of parameters: {count_params(model)}")
 
-    model = train(device, model, dataloader, val_dataloader, num_epochs=100)
+    model = train(device, model, dataloader, val_dataloader, name=name, 
+            num_epochs=100)
 
-    #state_dict = torch.load("logs/best_reg_2_0.pt", map_location="cpu")
-    #model.load_state_dict(state_dict)
-    #val_loss = validate(device, model, val_dataloader, plot=True)
+
+    model = RegNet().to(device)
+    state_dict = torch.load(f"logs/{name}.pt", map_location="cpu")
+    model.load_state_dict(state_dict)
+    val_loss = validate(device, model, val_dataloader, plot=True)
     
 
 if __name__=="__main__":
