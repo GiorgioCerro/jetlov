@@ -1,7 +1,7 @@
 __pycache__/
 src/jetlov/__pycache__/
 *.pyc
-data/
+data
 py.py
 .ipynb_checkpoints/
 wandb/
@@ -13,3 +13,5 @@ experiments/slurm*
 experiments/*.sh
 experiments/outputs/
 notebooks/
+src/jetlov/data_generator/*.sh
+src/jetlov/data_generator/*.gz
