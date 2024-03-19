@@ -22,6 +22,6 @@ at https://github.com/JetsGame/data.
 
 ## References
 
-* "Mauricio A. Diaz, Giorgio Cerro, Jacan Chaplais, Srinandan Dasmahapatra, Stefano Moretti" 
+* "Mauricio A. Diaz, Giorgio Cerro, Jacan Chaplais, Srinandan Dasmahapatra, Stefano Moretti"
 JetLOV: Enhancing Jet Tree Tagging through Neural Network Learning of Optimal LundNet Variables
   [arXiv:2311.14654](https://arxiv.org/abs/2311.14654)
