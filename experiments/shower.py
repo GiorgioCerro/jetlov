@@ -146,8 +146,9 @@ def training_loop(args, device, model, optim, scheduler, dataset, val_dataset):
                     loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
         loss_MSE = torch.mean(torch.tensor(loss_MSE))
-        alpha = 0.70
-        loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+        alpha = 5.
+        #loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+        loss = loss_XEntropy + alpha * loss_MSE
         loss.backward()
         optim.step()
 
@@ -249,9 +250,10 @@ def eval(args, device, model, dataset):
                     for j in range(i + 1, step):
                         loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
-            alpha = 0.9
+            alpha = 5.
             loss_MSE = torch.mean(torch.tensor(loss_MSE))
-            loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+            #loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+            loss = loss_XEntropy + alpha * loss_MSE
 
             metric_scores_eval.update(pred, label)
             loss_temp += loss.item()
