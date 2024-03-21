@@ -15,3 +15,4 @@ experiments/outputs/
 notebooks/
 src/jetlov/data_generator/*.sh
 src/jetlov/data_generator/*.gz
+src/jetlov.egg-info/
