@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from heparchy.read.hdf import HdfReader
-from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
-from lundnet.LundNet import LundNet
+from jetlov.jet_dataset import DGLGraphDatasetLund as Dataset
+from jetlov.LundNet import LundNet
 from tqdm import tqdm
 
 conv_params = [[32, 32], [32, 32], [64, 64], [64, 64], [128, 128], [128, 128]]

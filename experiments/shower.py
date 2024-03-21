@@ -11,12 +11,10 @@ import torch
 import torch.nn as nn
 import wandb
 from jetlov.composite import Composite
+from jetlov.jet_dataset import ReshowerDataset as Dataset
+from jetlov.LundNet import LundNet
 from jetlov.regnet import RegNet
 from jetlov.util import count_params, wandb_cluster_mode
-
-# from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
-from lundnet.jetron_dataset import ReshowerDataset as Dataset
-from lundnet.LundNet import LundNet
 from omegaconf import OmegaConf
 from torchmetrics import AUROC, ROC, MetricCollection
 from torchmetrics import classification as metrics

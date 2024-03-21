@@ -6,9 +6,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 from dgl.dataloading import GraphDataLoader
+from jetlov.jet_dataset import DGLGraphDatasetLund as Dataset
 from jetlov.regnet import RegNet
 from jetlov.util import count_params
-from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
 from torchmetrics.functional.regression import mean_absolute_percentage_error as MAPE
 from tqdm import tqdm
 

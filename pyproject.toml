@@ -42,4 +42,3 @@ select = [
 # Don't use the automatic fixing for now.
 fixable = ["I"]
 unfixable = ["F", "E"]
-
