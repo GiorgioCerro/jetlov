@@ -10,12 +10,10 @@ import torch.nn as nn
 import wandb
 from dgl.dataloading import GraphDataLoader
 from jetlov.composite import Composite
+from jetlov.jet_dataset import DGLGraphDatasetLund as Dataset
+from jetlov.LundNet import LundNet
 from jetlov.regnet import RegNet
 from jetlov.util import collate_fn, count_params, wandb_cluster_mode
-
-# from lundnet.dgl_dataset import DGLGraphDatasetLund as Dataset
-from lundnet.jetron_dataset import DGLGraphDatasetLund as Dataset
-from lundnet.LundNet import LundNet
 from omegaconf import OmegaConf
 from torchmetrics import AUROC, ROC, MetricCollection
 from torchmetrics import classification as metrics
@@ -31,7 +29,6 @@ warnings.filterwarnings(
     "ignore",
     message="User provided device_type of 'cuda', but CUDA is not available. Disabling",
 )
-
 
 def load_model(args):
     ### loading the regression network
