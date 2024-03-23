@@ -46,29 +46,7 @@ def load_model(args):
         fc_params=fc_params,
         use_fusion=use_fusion,
     )
-
-    ### initialise the ensemble model
-    # if args.task == "w-tag":
-    #    state_dict_reg = torch.load("logs/best_regression.pt",
-    #            map_location="cpu")
-    #    state_dict_lund = torch.load("logs/best_tagger.pt",
-    #            map_location="cpu")
-    # else:
-    #    state_dict_reg = torch.load("logs/regression_xs_top.pt",
-    #            map_location="cpu")
-    #    state_dict_lund = torch.load("logs/best_tagger_top.pt",
-    #            map_location="cpu")
-    # model_reg.load_state_dict(state_dict_reg)
-    # state_dict_lund = torch.load("logs/lund-0.pt", map_location="cpu")
-    # model_lund.load_state_dict(state_dict_lund)
-
-    if args.architecture == "composite":
-        state_dict_composite = torch.load("logs/jetlov-0.pt", map_location="cpu")
-        composite_model = Composite(model_reg, model_lund)
-        composite_model.load_state_dict(state_dict_composite)
-        return composite_model
-    else:
-        return model_lund
+    return model_lund
 
 
 def bkg_rejection_at_threshold(signal_eff, background_eff, sig_eff=0.5):
@@ -181,7 +159,7 @@ def eval(args, device, model, dataloader):
 
 def train(args, model, dataset, valid_dataset):
     with wandb.init(
-        project="prova",
+        project="topology",
         entity="office4005",
         config=dict(args),
         group=args.best_model_name[:-2] + "-" + args.task,
@@ -250,7 +228,7 @@ def train(args, model, dataset, valid_dataset):
 
 def test(args, model, test_dataset):
     with wandb.init(
-        project="prova",
+        project="topology",
         entity="office4005",
         config=dict(args),
         group=args.best_model_name[:-2] + "-" + args.task,
@@ -329,7 +307,7 @@ def test(args, model, test_dataset):
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
-@click.option("--architecture", type=click.STRING, default="composite")
+@click.option("--algorithm", type=click.STRING, default="cambridge")
 @click.option("--runs", type=click.INT, default=1)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
@@ -337,11 +315,11 @@ def main(**kwargs):
     for key, val in args.items():
         print(f"{key}: {val}")
 
-    background = "bkg-0.hdf5"  # "QCD_500GeV.json.gz"
+    background = "QCD_500GeV.json.gz"
     if args.task == "w-tag":
         signal = "WW_500GeV.json.gz"
     elif args.task == "top-tag":
-        signal = "top-0.hdf5"  # "Top_500GeV.json.gz"
+        signal = "Top_500GeV.json.gz"
     else:
         signal = "Quark_500GeV.json.gz"
         background = "Gluon_500GeV.json.gz"
@@ -351,6 +329,7 @@ def main(**kwargs):
         Path(PATH + "/train/" + signal),
         nev=-1,
         n_samples=args.train_samples,
+        algorithm=args.algorithm,
     )
     # valid_dataset = Dataset(Path(PATH+"/valid/valid_"+background),
     #                        Path(PATH+"/valid/valid_"+signal),
@@ -360,6 +339,7 @@ def main(**kwargs):
         Path(PATH + "/valid/valid_" + signal),
         nev=-1,
         n_samples=args.valid_samples,
+        algorithm=args.algorithm,
     )
 
     args.logdir = "logs/"
@@ -374,15 +354,10 @@ def main(**kwargs):
         args.best_model_name = args.best_model_name[:-2]
     del train_dataset, valid_dataset
 
-    # test_dataset = Dataset(Path(PATH+"/test/test_"+background),
-    #                        Path(PATH+"/test/test_"+signal),
-    #                        nev=-1, n_samples=args.test_samples)
-    test_dataset = Dataset(
-        Path(PATH + "/test/test_bkg-0.hdf5"),
-        Path(PATH + "/test/test_top-0.hdf5"),
-        nev=-1,
-        n_samples=args.test_samples,
-    )
+    test_dataset = Dataset(Path(PATH+"/test/test_"+background),
+                            Path(PATH+"/test/test_"+signal),
+                            nev=-1, n_samples=args.test_samples,
+                            algorithm=args.algorithm)
     for i in range(args.runs):
         args.best_model_name += f"-{str(i)}"
         model = load_model(args)
