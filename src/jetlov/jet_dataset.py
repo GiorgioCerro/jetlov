@@ -16,7 +16,8 @@ import pandas as pd
 # from .read_data import Jets
 import torch
 import torch.nn.functional as F
-from dgl.transforms import remove_self_loop
+
+# from dgl.transforms import remove_self_loop
 from torch.utils.data import Dataset
 from tqdm import tqdm
 

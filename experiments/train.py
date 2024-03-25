@@ -30,6 +30,7 @@ warnings.filterwarnings(
     message="User provided device_type of 'cuda', but CUDA is not available. Disabling",
 )
 
+
 def load_model(args):
     ### loading the regression network
     model_reg = RegNet()
@@ -329,7 +330,7 @@ def test(args, model, test_dataset):
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="w-tag")
 @click.option("--optim", type=click.STRING, default="adam")
-@click.option("--architecture", type=click.STRING, default="composite")
+@click.option("--architecture", type=click.STRING, default="lund")
 @click.option("--runs", type=click.INT, default=1)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)

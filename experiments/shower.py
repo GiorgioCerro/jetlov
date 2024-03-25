@@ -146,8 +146,8 @@ def training_loop(args, device, model, optim, scheduler, dataset, val_dataset):
                     loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
         loss_MSE = torch.mean(torch.tensor(loss_MSE))
-        alpha = 0.70
-        loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+        alpha = 5.0
+        loss = loss_XEntropy + alpha * loss_MSE
         loss.backward()
         optim.step()
 
@@ -249,9 +249,9 @@ def eval(args, device, model, dataset):
                     for j in range(i + 1, step):
                         loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
-            alpha = 0.9
+            alpha = 5.0
             loss_MSE = torch.mean(torch.tensor(loss_MSE))
-            loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+            loss = loss_XEntropy + alpha * loss_MSE
 
             metric_scores_eval.update(pred, label)
             loss_temp += loss.item()
@@ -391,7 +391,7 @@ def test(args, model, test_dataset):
 @click.option("--best_model_name", type=click.STRING, default="best")
 @click.option("--task", type=click.STRING, default="top-tag")
 @click.option("--optim", type=click.STRING, default="adam")
-@click.option("--architecture", type=click.STRING, default="composite")
+@click.option("--architecture", type=click.STRING, default="lund")
 @click.option("--runs", type=click.INT, default=1)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
