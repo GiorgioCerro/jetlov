@@ -1,5 +1,6 @@
 from typing import Tuple, Union
 
+import dgl
 import torch.nn as nn
 from dgl import DGLGraph
 from torch import Tensor
@@ -19,6 +20,6 @@ class Composite(nn.Module):
         graph.ndata["features"] = x_a
         x_b = self.network_b(graph)
         if self.return_lund:
-            return x_b, x_a
+            return x_b, dgl.mean_nodes(graph, "features")
         else:
             return x_b

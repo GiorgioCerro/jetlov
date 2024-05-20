@@ -10,8 +10,8 @@ import torch.nn as nn
 import wandb
 from dgl.dataloading import GraphDataLoader
 from jetlov.composite import Composite
-from jetlov.jet_dataset import DGLGraphDatasetLund as Dataset
 from jetlov.LundNet import LundNet
+from jetlov.ParticleNet import ParticleNet
 from jetlov.regnet import RegNet
 from jetlov.util import collate_fn, count_params, wandb_cluster_mode
 from omegaconf import OmegaConf
@@ -30,12 +30,14 @@ warnings.filterwarnings(
     message="User provided device_type of 'cuda', but CUDA is not available. Disabling",
 )
 
+
 def load_model(args):
     ### loading the regression network
     model_reg = RegNet()
 
     ### loading the tagger
-    conv_params = [[32, 32], [32, 32], [64, 64], [64, 64], [128, 128], [128, 128]]
+    # conv_params = [[32, 32], [32, 32], [64, 64], [64, 64], [128, 128], [128, 128]]
+    conv_params = [[32, 32], [64, 64], [128, 128]]
     fc_params = [(256, 0.1)]
     use_fusion = True
     input_dims = 5
@@ -63,12 +65,46 @@ def load_model(args):
     # model_lund.load_state_dict(state_dict_lund)
 
     if args.architecture == "composite":
-        state_dict_composite = torch.load("logs/jetlov-0.pt", map_location="cpu")
+        # state_dict_composite = torch.load("logs/jetlov-0.pt", map_location="cpu")
         composite_model = Composite(model_reg, model_lund)
-        composite_model.load_state_dict(state_dict_composite)
+        # composite_model.load_state_dict(state_dict_composite)
         return composite_model
-    else:
+    elif args.architecture == "lund":
+        if args.task == "w-tag":
+            state_dict_lund = torch.load(
+                "logs/W_QCD_500GeV_LundNet5_state.pt", map_location="cpu"
+            )
+        else:
+            state_dict_lund = torch.load(
+                "logs/Top_QCD_500GeV_LundNet5_state.pt", map_location="cpu"
+            )
+        model_lund.load_state_dict(state_dict_lund)
         return model_lund
+    else:
+        conv_params = [
+            (16, (64, 64, 64)),
+            (16, (128, 128, 128)),
+            (16, (256, 256, 256)),
+        ]
+        fc_params = [(256, 0.1)]
+        use_fusion = False
+        input_dims = 4
+        model_particle = ParticleNet(
+            input_dims=input_dims,
+            num_classes=2,
+            fc_params=fc_params,
+            use_fusion=use_fusion,
+        )
+        if args.task == "w-tag":
+            state_dict_particle = torch.load(
+                "logs/particlenet-w-0.pt", map_location="cpu"
+            )
+        else:
+            state_dict_particle = torch.load(
+                "logs/particlenet-top-0.pt", map_location="cpu"
+            )
+        model_particle.load_state_dict(state_dict_particle)
+        return model_particle
 
 
 def bkg_rejection_at_threshold(signal_eff, background_eff, sig_eff=0.5):
@@ -76,7 +112,7 @@ def bkg_rejection_at_threshold(signal_eff, background_eff, sig_eff=0.5):
     return 1 / (1 - background_eff[torch.argmin(torch.abs(signal_eff - sig_eff)) + 1])
 
 
-def training_loop(args, device, model, optim, scheduler, dataloader, val_loader):
+def training_loop(args, device, model, optim, dataloader, val_loader):
     loss_function = nn.CrossEntropyLoss(reduction="mean")
     soft = nn.Softmax(dim=1)
     metric_scores = MetricCollection(
@@ -143,7 +179,6 @@ def training_loop(args, device, model, optim, scheduler, dataloader, val_loader)
         }
     )
 
-    scheduler.step()
     metric_scores.reset()
     return model, scores_eval["accuracy"]
 
@@ -181,7 +216,7 @@ def eval(args, device, model, dataloader):
 
 def train(args, model, dataset, valid_dataset):
     with wandb.init(
-        project="prova",
+        project=args.wandb_project,
         entity="office4005",
         config=dict(args),
         group=args.best_model_name[:-2] + "-" + args.task,
@@ -193,7 +228,13 @@ def train(args, model, dataset, valid_dataset):
 
         ### optimizer and scheduler
         if args.optim == "adam":
-            optim = torch.optim.Adam(model.parameters(), lr=args.lr, amsgrad=True)
+            optim = torch.optim.Adam(
+                model.parameters(), lr=args.lr, weight_decay=1e-4, amsgrad=True
+            )
+        elif args.optim == "adamW":
+            optim = torch.optim.AdamW(
+                model.parameters(), lr=args.lr, weight_decay=1e-4, amsgrad=True
+            )
         else:
             optim = torch.optim.SGD(
                 model.parameters(), lr=args.lr, momentum=0.9, weight_decay=1e-5
@@ -202,6 +243,18 @@ def train(args, model, dataset, valid_dataset):
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optim, gamma=0.5, milestones=lr_steps
         )
+        if args.architecture == "particle":
+            cycle_step = 10
+            scheduler = torch.linspace(3e-4, 3e-3, cycle_step).tolist()
+            scheduler += reversed(scheduler)
+            scheduler += torch.linspace(
+                3e-4, 5e-7, args.epochs + 1 - (2 * cycle_step)
+            ).tolist()
+        else:
+            scheduler = torch.ones(args.epochs + 1) * args.lr
+            for _lr in lr_steps:
+                scheduler[_lr:] *= 0.5
+            scheduler = scheduler.tolist()
 
         ### preparing dataloaders
         dataloader = GraphDataLoader(
@@ -229,7 +282,7 @@ def train(args, model, dataset, valid_dataset):
             print(f"Epoch: {epoch:n}")
             init = time.time()
             model, valid_acc = training_loop(
-                args, device, model, optim, scheduler, dataloader, val_loader
+                args, device, model, optim, dataloader, val_loader
             )
             if epoch == 0:
                 print(f"epoch time: {(time.time() - init):.2f}")
@@ -242,6 +295,9 @@ def train(args, model, dataset, valid_dataset):
                 p.mkdir(parents=True, exist_ok=True)
                 torch.save(model.state_dict(), p.joinpath(f"{args.best_model_name}.pt"))
 
+            for opt_params in optim.param_groups:
+                opt_params["lr"] = scheduler[epoch + 1]
+
         print(30 * "=")
         print("Training complete")
         del dataloader, val_loader
@@ -250,7 +306,7 @@ def train(args, model, dataset, valid_dataset):
 
 def test(args, model, test_dataset):
     with wandb.init(
-        project="prova",
+        project=args.wandb_project,
         entity="office4005",
         config=dict(args),
         group=args.best_model_name[:-2] + "-" + args.task,
@@ -333,56 +389,63 @@ def test(args, model, test_dataset):
 @click.option("--runs", type=click.INT, default=1)
 def main(**kwargs):
     args = OmegaConf.create(kwargs)
+    args["wandb_project"] = "vicreg"
     print("Working with the following configs:")
     for key, val in args.items():
         print(f"{key}: {val}")
 
-    background = "bkg-0.hdf5"  # "QCD_500GeV.json.gz"
+    if args.architecture == "particle":
+        from jetlov.jet_dataset import DGLGraphDatasetParticle as Dataset
+    else:  # lund or composite
+        from jetlov.jet_dataset import DGLGraphDatasetLund as Dataset
+
+    # background = "QCD_500GeV.json.gz"
+    background = "bkg-vicreg.hdf5"
     if args.task == "w-tag":
-        signal = "WW_500GeV.json.gz"
+        # signal = "WW_500GeV.json.gz"
+        signal = "ww-vicreg.hdf5"
+        args["datasignal"] = signal
     elif args.task == "top-tag":
-        signal = "top-0.hdf5"  # "Top_500GeV.json.gz"
+        # signal = "Top_500GeV.json.gz"
+        signal = "top.hdf5"
+        args["datasignal"] = signal
     else:
         signal = "Quark_500GeV.json.gz"
         background = "Gluon_500GeV.json.gz"
     PATH = args.data_path
-    train_dataset = Dataset(
-        Path(PATH + "/train/" + background),
-        Path(PATH + "/train/" + signal),
-        nev=-1,
-        n_samples=args.train_samples,
-    )
-    # valid_dataset = Dataset(Path(PATH+"/valid/valid_"+background),
-    #                        Path(PATH+"/valid/valid_"+signal),
-    #                        nev=-1, n_samples=args.valid_samples)
-    valid_dataset = Dataset(
-        Path(PATH + "/valid/valid_" + background),
-        Path(PATH + "/valid/valid_" + signal),
-        nev=-1,
-        n_samples=args.valid_samples,
-    )
+    # train_dataset = Dataset(
+    #    Path(PATH + "/train/" + background),
+    #    Path(PATH + "/train/" + signal),
+    #    nev=-1,
+    #    n_samples=args.train_samples,
+    # )
+
+    # valid_dataset = Dataset(
+    #    Path(PATH + "/valid/valid_" + background),
+    #    Path(PATH + "/valid/valid_" + signal),
+    #    nev=-1, n_samples=args.valid_samples,
+    # )
 
     args.logdir = "logs/"
     model = load_model(args)
     print(f"Model with {count_params(model)} trainable parameters")
 
-    wandb_cluster_mode()
-    for i in range(args.runs):
-        model = load_model(args)
-        args.best_model_name += f"-{str(i)}"
-        model = train(args, model, train_dataset, valid_dataset)
-        args.best_model_name = args.best_model_name[:-2]
-    del train_dataset, valid_dataset
+    # wandb_cluster_mode()
+    # for i in range(args.runs):
+    #    model = load_model(args)
+    #    args.best_model_name += f"-{str(i)}"
+    #    model = train(args, model, train_dataset, valid_dataset)
+    #    args.best_model_name = args.best_model_name[:-2]
+    # del train_dataset, valid_dataset
 
-    # test_dataset = Dataset(Path(PATH+"/test/test_"+background),
-    #                        Path(PATH+"/test/test_"+signal),
-    #                        nev=-1, n_samples=args.test_samples)
+    wandb_cluster_mode()
     test_dataset = Dataset(
-        Path(PATH + "/test/test_bkg-0.hdf5"),
-        Path(PATH + "/test/test_top-0.hdf5"),
+        Path(PATH + "/test/test_" + background),
+        Path(PATH + "/test/test_" + signal),
         nev=-1,
         n_samples=args.test_samples,
     )
+
     for i in range(args.runs):
         args.best_model_name += f"-{str(i)}"
         model = load_model(args)

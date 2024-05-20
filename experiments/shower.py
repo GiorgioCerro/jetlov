@@ -90,7 +90,7 @@ def load_model(args):
     # model_lund.load_state_dict(state_dict_lund)
 
     if args.architecture == "composite":
-        return Composite(model_reg, model_lund)
+        return Composite(model_reg, model_lund, return_lund=True)
     else:
         return model_lund
 
@@ -133,7 +133,7 @@ def training_loop(args, device, model, optim, scheduler, dataset, val_dataset):
 
         label = torch.tensor(label).squeeze().long().to(device)
         batch = dgl.batch(graph).to(device)
-        logits, vectors = model(batch, return_hidden_layer=True)
+        logits, vectors = model(batch)  # , return_hidden_layer=True)
         pred = soft(logits)[:, 1]
 
         loss_XEntropy = loss_function_XEntropy(logits, label)
@@ -146,9 +146,9 @@ def training_loop(args, device, model, optim, scheduler, dataset, val_dataset):
                     loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
         loss_MSE = torch.mean(torch.tensor(loss_MSE))
-        alpha = 5.
-        #loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
-        loss = loss_XEntropy + alpha * loss_MSE
+        alpha = 0.7
+        loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+        # loss = loss_XEntropy + alpha * loss_MSE
         loss.backward()
         optim.step()
 
@@ -238,7 +238,7 @@ def eval(args, device, model, dataset):
 
             label = torch.tensor(label).squeeze().long().to(device)
             batch = dgl.batch(graph).to(device)
-            logits, vectors = model(batch, return_hidden_layer=True)
+            logits, vectors = model(batch)  # , return_hidden_layer=True)
             pred = soft(logits)[:, 1]
 
             loss_XEntropy = loss_function_XEntropy(logits, label)
@@ -250,10 +250,10 @@ def eval(args, device, model, dataset):
                     for j in range(i + 1, step):
                         loss_MSE.append(loss_function_MSE(vec[i], vec[j]))
 
-            alpha = 5.
+            alpha = 0.7
             loss_MSE = torch.mean(torch.tensor(loss_MSE))
-            #loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
-            loss = loss_XEntropy + alpha * loss_MSE
+            loss = alpha * loss_XEntropy + (1 - alpha) * loss_MSE
+            # loss = loss_XEntropy + alpha * loss_MSE
 
             metric_scores_eval.update(pred, label)
             loss_temp += loss.item()

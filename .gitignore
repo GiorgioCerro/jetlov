@@ -15,4 +15,5 @@ experiments/outputs/
 notebooks/
 src/jetlov/data_generator/*.sh
 src/jetlov/data_generator/*.gz
+src/jetlov/data_generator/*.hdf5
 src/jetlov.egg-info/
